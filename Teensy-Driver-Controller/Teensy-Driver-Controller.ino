@@ -20,6 +20,10 @@ int accelerator = 22;
 bool isBreaking = true;
 bool isAccelerating = false;
 
+//motorController ID
+#define motorControllerBase 0x400u
+
+CAN_message_t driveMessage;
 
 //System timer
 Metro sysTimer = Metro(1);  // milliseconds
@@ -58,6 +62,12 @@ void setup() {
 
 
   sysTimer.reset();
+}
+
+void motor_drive(uint8_t current, uint8_t velocity){
+
+
+
 }
 
 //DEBUG AND TESTING//
