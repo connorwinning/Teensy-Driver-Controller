@@ -14,16 +14,12 @@
 #include <Metro.h>
 
 //Serial Pins (digital)
-int breaks = 33;
-int accelerator = 22;
-
-bool isBreaking = true;
-bool isAccelerating = false;
+int accelSwitch = 23;
 
 //motorController ID
 #define motorControllerBase 0x400u
-
-CAN_message_t driveMessage;
+#define powerCommand motorControllerBase + 0x02u
+#define highPower 0x3c23d70a
 
 //System timer
 Metro sysTimer = Metro(1);  // milliseconds
@@ -32,7 +28,7 @@ Metro sysTimer = Metro(1);  // milliseconds
 FlexCAN CANbus = FlexCAN(500000);     // 500kb/s baudrate
 
 //messages to be sent through the CANbus
-static CAN_message_t msg;    // sending message
+static CAN_message_t powerMsg;    // sending message
 static CAN_message_t rxmsg; // return message
 
 //On board LED pin for DebugState
@@ -56,10 +52,12 @@ void setup() {
   pinMode(led, OUTPUT); //turn on LED pin 
   digitalWrite(led, 1);
 
-  pinMode(breaks, INPUT);
-  pinMode(accelerator, INPUT);
+  pinMode(accelSwitch, INPUT);
 
-
+  //msg setup for motor power command
+  powerMsg.id = powerCommand;
+  powerMsg.len = 8;
+  powerMsg.timeout = 250;
 
   sysTimer.reset();
 }
@@ -67,14 +65,11 @@ void setup() {
 void motor_drive(uint8_t current, uint8_t velocity){
 
 
-
+  return;
 }
 
-//DEBUG AND TESTING//
-float acceleration = 0;
-
 void loop() {
-  // service software timers based on Metro tick
+  // for every tick of sysTimer decreases the software timers
   if ( sysTimer.check() ) {
     if ( txTimer ) {
       --txTimer;
@@ -84,19 +79,49 @@ void loop() {
     }
   }
 
-  //update Acceleration and Breaking status
-  isAccelerating = digitalRead(accelerator);
-  isBreaking = digitalRead(breaks);
+  //transmit message code if txTimer != 0
+  if(!txTimer) {
 
-  if(isAccelerating){
-    acceleration = 100;
-  } else {
-    acceleration = 0;
-  }
-  if(isBreaking){
-    acceleration = 0;
+    if(digitalRead(accelSwitch)) {
+      //Send powerMsg to motor controller with high current
+      Serial.println("MOVING");
+
+      //inputing uint8_t values into the buffer
+      powerMsg.buf[7] = (uint8_t) (highPower & 0x000000ff);
+      powerMsg.buf[6] = (uint8_t) ((highPower >> 8) & 0x000000ff);
+      powerMsg.buf[5] = (uint8_t) ((highPower >> 16) & 0x000000ff);
+      powerMsg.buf[4] = (uint8_t) ((highPower >> 24) & 0x000000ff);
+      powerMsg.buf[3] = 0;
+      powerMsg.buf[2] = 0;
+      powerMsg.buf[1] = 0;
+      powerMsg.buf[0] = 0;
+      CANbus.write(powerMsg);
+
+    } else {
+      //send powerMsg to motor controller with low current
+      Serial.println("NotMoving");
+      powerMsg.buf[0] = 0;
+      powerMsg.buf[1] = 0;
+      powerMsg.buf[2] = 0;
+      powerMsg.buf[3] = 0;
+      powerMsg.buf[4] = 0;
+      powerMsg.buf[5] = 0;
+      powerMsg.buf[6] = 0;
+      powerMsg.buf[7] = 0;
+      CANbus.write(powerMsg);
+    }
+
+    //set the txTimer to count down 10 ms
+    txTimer = 10;
   }
 
-  Serial.print("ACCELERATION: ");
-  Serial.println(acceleration);
+  //return message code if rxTimer != 0
+  if(!rxTimer) {
+
+
+
+    
+  }
+
+  
 }
