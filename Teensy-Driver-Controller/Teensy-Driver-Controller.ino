@@ -13,7 +13,7 @@
 #include "FlexCAN.h"
 #include <Metro.h>
 
-//Serial Pins (digital)
+//Serial Pins
 int accelSwitch = 23;
 
 //motorController ID
@@ -55,6 +55,7 @@ void setup() {
   pinMode(accelSwitch, INPUT);
 
   //msg setup for motor power command
+  powerMsg.ext = 0;
   powerMsg.id = powerCommand;
   powerMsg.len = 8;
   powerMsg.timeout = 250;
@@ -79,25 +80,27 @@ void loop() {
     }
   }
 
-  //transmit message code if txTimer != 0
-  if(!txTimer) {
+  //transmit message code if txTimer == 0
+  //if(!txTimer) {
+  if(CANbus.available()){
 
-    if(digitalRead(accelSwitch)) {
+    if(digitalRead(accelSwitch)){
+    //if(digitalRead(accelSwitch)) {
       //Send powerMsg to motor controller with high current
       Serial.println("MOVING");
 
       //inputing uint8_t values into the buffer
-      powerMsg.buf[7] = (uint8_t) (highPower & 0x000000ff);
-      powerMsg.buf[6] = (uint8_t) ((highPower >> 8) & 0x000000ff);
-      powerMsg.buf[5] = (uint8_t) ((highPower >> 16) & 0x000000ff);
-      powerMsg.buf[4] = (uint8_t) ((highPower >> 24) & 0x000000ff);
+      powerMsg.buf[7] = static_cast<uint8_t>(highPower & 0x000000ff);
+      powerMsg.buf[6] = static_cast<uint8_t>((highPower >> 8) & 0x000000ff);
+      powerMsg.buf[5] = static_cast<uint8_t>((highPower >> 16) & 0x000000ff);
+      powerMsg.buf[4] = static_cast<uint8_t>((highPower >> 24) & 0x000000ff);
       powerMsg.buf[3] = 0;
       powerMsg.buf[2] = 0;
       powerMsg.buf[1] = 0;
       powerMsg.buf[0] = 0;
-      CANbus.write(powerMsg);
+      Serial.println(CANbus.write(powerMsg));
 
-    } else {
+    } else if(!digitalRead(accelSwitch)) {
       //send powerMsg to motor controller with low current
       Serial.println("NotMoving");
       powerMsg.buf[0] = 0;
@@ -122,6 +125,5 @@ void loop() {
 
     
   }
-
   
 }
